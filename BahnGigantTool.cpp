@@ -10,7 +10,7 @@
 //                Zum Kompilieren wird CIMG.h benötigt, was es auf
 //                http://cimg.sourceforge.net zum Download gibt.
 //                Weitere Informationen auf
-//				  http://www.bahngigant.de/forum/index.php?a=vtopic&t=282
+//                http://www.bahngigant.de/forum/index.php?a=vtopic&t=282
 //============================================================================
 
 #include <iostream>
@@ -18,6 +18,8 @@
 #include <vector>
 #include "CImg.h"
 #include <stdint.h>
+#include <windows.h>
+#include <Commdlg.h>
 using namespace std;
 
 const unsigned char AE = static_cast<unsigned char>(142); 
@@ -38,17 +40,39 @@ static uint8_t color_table[7][3] = {// in RGB format
 	{192,	192,	192},	//Gebäude, Schienen, Straßen
 	};
 
+string openfilename(char *filter = "All Files (*.*)\0*.*\0", HWND owner = NULL) {
+  OPENFILENAME ofn;
+  char fileName[MAX_PATH] = "";
+  ZeroMemory(&ofn, sizeof(ofn));
+
+  ofn.lStructSize = sizeof(OPENFILENAME);
+  ofn.hwndOwner = owner;
+  ofn.lpstrFilter = filter;
+  ofn.lpstrFile = fileName;
+  ofn.nMaxFile = MAX_PATH;
+  ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+  ofn.lpstrDefExt = "";
+
+  string fileNameStr;
+
+  if ( GetOpenFileName(&ofn) )
+    fileNameStr = fileName;
+
+  return fileNameStr;
+}
+
 int main(int argc, char *argv[]) {
-	//Fehlerchecks
+	//Eingabedatei auswählen
+	string input_file;
 	if(argc == 1) {
-		cerr << "Keine Eingabedatei angegeben!";
-		return 1;
-	}
-	if(argc > 2) {
+		input_file = openfilename();
+	} else if(argc == 2) {
+		input_file = argv[1];
+	} else {
 		cerr << "Zu viele Parameter!";
 		return 2;
 	}
-	ifstream in_file (argv[1], ios::binary);
+	ifstream in_file (input_file.c_str(), ios::binary);
 	in_file.seekg(0, ios::end);
 	size_t length = in_file.tellg(); 
 	in_file.seekg( 0, ios::beg );
@@ -78,7 +102,7 @@ int main(int argc, char *argv[]) {
    	in_file.close();
 
 	//csv Datei schreiben
-	string csv_out = string(argv[1]);
+	string csv_out = string(input_file);
 	csv_out.append(".csv");
 	ofstream out_file (csv_out.c_str(), ios::binary);
   	 for(int i=0; i<1024; i++) {
@@ -107,7 +131,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	//Ausgabe des Bitmaps
-	string bmp_out = string(argv[1]);
+	string bmp_out = string(input_file);
 	bmp_out.append(".bmp");
     cimg_library::CImg<uint8_t> img(&pxvector[0], 1024, 1024, 1, 3);
 	img.save_bmp(bmp_out.c_str());

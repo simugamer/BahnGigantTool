@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <windows.h>
 #include <Commdlg.h>
+#include <sstream>
 using namespace std;
 
 const unsigned char AE = static_cast<unsigned char>(142); 
@@ -29,6 +30,8 @@ const unsigned char oe = static_cast<unsigned char>(148);
 const unsigned char UE = static_cast<unsigned char>(154); 
 const unsigned char ue = static_cast<unsigned char>(129); 
 const unsigned char ss = static_cast<unsigned char>(225);
+
+bool commandline_mode;
 
 static uint8_t color_table[7][3] = {// in RGB format
 	{0,		192,	0},		//Gras 
@@ -65,7 +68,11 @@ int main(int argc, char *argv[]) {
 	//Eingabedatei auswählen
 	string input_file;
 	if(argc == 1) {
-		input_file = openfilename();
+		input_file = openfilename("Geländeinfo-Dump (*.*)\0*.*\0");
+		if(input_file.size()==0) {
+			MessageBox(NULL, "Kein Geländeinfo-Dump ausgewählt!" , NULL, MB_ICONERROR);
+			return 2;
+		}
 	} else if(argc == 2) {
 		input_file = argv[1];
 	} else {
@@ -77,9 +84,18 @@ int main(int argc, char *argv[]) {
 	size_t length = in_file.tellg(); 
 	in_file.seekg( 0, ios::beg );
 	if(length != 1024*1024) {
-		cerr << "Falsche Dateigr" << oe << ss <<"e! ";
-		cerr << "Datei ist " << length << " Bytes gro" << ss;
-		cerr << ".\nErwartet wurden 1.048.576 Bytes.";
+		if(commandline_mode) {
+			cerr << "Falsche Dateigr" << oe << ss <<"e des Gel" << ae << "ndeinfo-Dumps! ";
+			cerr << "Datei ist " << length << " Bytes gro" << ss;
+			cerr << ".\nErwartet wurden 1.048.576 Bytes.";
+		}
+		else {
+			std::stringstream error_string;
+			error_string << "Falsche Dateigröße des Geländeinfo-Dumps! ";
+			error_string << "Datei ist " << length << " Bytes groß";
+			error_string << ".\nErwartet wurden 1.048.576 Bytes.";
+			MessageBox(NULL, error_string.str().c_str() , NULL, MB_ICONERROR);
+		}
 		return 3;
 	}
 
@@ -96,8 +112,13 @@ int main(int argc, char *argv[]) {
    			}
 		}
     } else {
-		cerr << "Kann Datei nicht " << oe <<" ffnen!";
-		return 4;
+		if(commandline_mode) {
+			cerr << "Kann Gel" <<ae << "ndeinfo-Dump nicht " << oe <<" ffnen!";
+		} else {
+			std::stringstream error_string;
+			error_string << "Kann Geländeinfo-Dump nicht öffnen!";
+			MessageBox(NULL, error_string.str().c_str() , NULL, MB_ICONERROR);
+		}
 	}
    	in_file.close();
 
@@ -121,10 +142,18 @@ int main(int argc, char *argv[]) {
 				if(data[i][j]<7) {
 					pxvector.push_back(color_table[data[i][j]][n]);
 				} else {
-					cerr << "Unbekannter Gel" << ae << "ndetyp ";
-					cerr << (int)data[i][j];
-					cerr << " an Position (" << i << "," << j << ")!";
-					return 5;
+					if(commandline_mode) {
+						cerr << "Unbekannter Gel" << ae << "ndetyp ";
+						cerr << (int)data[i][j];
+						cerr << " an Position (" << i << "," << j << ")!";
+						return 5;
+					} else {
+						std::stringstream error_string;
+						error_string << "Unbekannter Gel" << ae << "ndetyp ";
+						error_string << (int)data[i][j];
+						error_string << " an Position (" << i << "," << j << ")!";
+						MessageBox(NULL, error_string.str().c_str() , NULL, MB_ICONERROR);
+					}
 				}
   			 }
   		 }

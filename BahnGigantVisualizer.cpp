@@ -1,12 +1,12 @@
 //============================================================================
 // Name         : BahnGigantVisualizer.cpp
 // Author       : simugamer
-// Version      : 0.1
+// Version      : 0.2
 // Copyright    : GNU 3 Public Licence
 // Beschreibung : Nimmt ein Memory-Dump der Texturinformationen und ein 1024x1024 Bitmap.
 //                An Stellen, an denen das Bitmap schwarz ist, werden die Daten in dem Dump
 //                so verändert, dass beim zurückladen an dieser Stelle in Bahngigant die Textur
-//                dunkel wird. Zum rückgängigmachen eine BMP Datei laden, die kein schwarz enthält.
+//                dunkel wird. Zum rückgängigmachen eine BMP Datei laden, die kein schwarz enthält
 //                Der Memorydump kann z.B mit UsaMimi Hurricane erstellt werden. 
 //                Zum Kompilieren wird CIMG.h benötigt, was es auf
 //                http://cimg.sourceforge.net zum Download gibt.
@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <windows.h>
 #include <Commdlg.h>
+#include <sstream>
 using namespace std;
 
 const unsigned char AE = static_cast<unsigned char>(142); 
@@ -30,6 +31,8 @@ const unsigned char oe = static_cast<unsigned char>(148);
 const unsigned char UE = static_cast<unsigned char>(154); 
 const unsigned char ue = static_cast<unsigned char>(129); 
 const unsigned char ss = static_cast<unsigned char>(225);
+
+bool commandline_mode;
 
 string openfilename(char *filter = "All Files (*.*)\0*.*\0", HWND owner = NULL) {
   OPENFILENAME ofn;
@@ -53,15 +56,26 @@ string openfilename(char *filter = "All Files (*.*)\0*.*\0", HWND owner = NULL) 
 }
 
 int main(int argc, char *argv[]) {
+
 	//Eingabedatei auswählen
 	string bin_filename;
 	string bmp_filename;
 	if(argc == 1) {
-		bin_filename = openfilename();
-		bmp_filename = openfilename();
+		bin_filename = openfilename("Texurinfo-Dump (*.*)\0*.*\0");
+		bmp_filename = openfilename("24-Bit-Bitmap (*.bmp)\0*.bmp\0");
+		commandline_mode = false;
+		if(bin_filename.size()==0) {
+			MessageBox(NULL, "Kein Texurinfo-Dump ausgewählt!" , NULL, MB_ICONERROR);
+			return 2;
+		}
+		if(bin_filename.size()==0) {
+			MessageBox(NULL, "Kein Windows Bitmap ausgewählt!" , NULL, MB_ICONERROR);
+			return 2;
+		}
 	} else if(argc == 3) {
 		bin_filename = argv[1];
 		bmp_filename = argv[1];
+		commandline_mode = true;
 	} else {
 		cerr << "Falsche Anzahl an Parametern!";
 		return 2;
@@ -71,9 +85,18 @@ int main(int argc, char *argv[]) {
 	size_t length = in_file.tellg(); 
 	in_file.seekg( 0, ios::beg );
 	if(length != 1024*1024*4) {
-		cerr << "Falsche Dateigr" << oe << ss <<"e! ";
-		cerr << "Datei ist " << length << " Bytes gro" << ss;
-		cerr << ".\nErwartet wurden 4.194.304 Bytes.";
+		if(commandline_mode) {
+			cerr << "Falsche Dateigr" << oe << ss <<"e des Texurinfo-Dumps! ";
+			cerr << "Datei ist " << length << " Bytes gro" << ss;
+			cerr << ".\nErwartet wurden 4.194.304 Bytes.";
+		}
+		else {
+			std::stringstream error_string;
+			error_string << "Falsche Dateigröße des Texurinfo-Dumps! ";
+			error_string << "Datei ist " << length << " Bytes groß";
+			error_string << ".\nErwartet wurden 4.194.304 Bytes.";
+			MessageBox(NULL, error_string.str().c_str() , NULL, MB_ICONERROR);
+		}
 		return 3;
 	}
 
@@ -93,7 +116,13 @@ int main(int argc, char *argv[]) {
    			}
 		}
     } else {
-		cerr << "Kann Datei nicht " << oe <<" ffnen!";
+		if(commandline_mode) {
+			cerr << "Kann Texurinfo-Dump nicht " << oe <<" ffnen!";
+		} else {
+			std::stringstream error_string;
+			error_string << "Kann Texurinfo-Dump nicht öffnen!";
+			MessageBox(NULL, error_string.str().c_str() , NULL, MB_ICONERROR);
+		}
 		return 4;
 	}
    	in_file.close();
@@ -101,8 +130,15 @@ int main(int argc, char *argv[]) {
 	//Bitmap einlesen
 	cimg_library::CImg<unsigned char> image(bmp_filename.c_str());
 	if(image.height()!=1024 || image.width()!= 1024) {
-		cerr << "Falsche Dimensionen des BMP.\n";
-		cerr << "BMP muss 1024x1024 gro" << ss << " sein!";
+		if(commandline_mode) {
+			cerr << "Falsche Dimensionen des BMP.\n";
+			cerr << "BMP muss 1024x1024 gro" << ss << " sein!";
+		} else {
+			std::stringstream error_string;
+			error_string << "Falsche Dimensionen des BMP.\n";
+			error_string << "BMP muss 1024x1024 groß sein!";
+			MessageBox(NULL, error_string.str().c_str() , NULL, MB_ICONERROR);
+		}
 		return 5;
 	}
 	vector<vector<vector<unsigned char> > > bmp_data;
@@ -135,7 +171,13 @@ int main(int argc, char *argv[]) {
 				} else if(bin_data[i][j][0] == 0xC8 || bin_data[i][j][0] == 0x08) {
 					bin_data[i][j][0] = 0x08;
 				} else {
-					cerr << "Unbekannte Helligkeitsstufe " << (int)bin_data[i][j][0] << ".";
+					if(commandline_mode) {
+						cerr << "Unbekannte Helligkeitsstufe " << (int)bin_data[i][j][0] << ".";
+					} else {
+						std::stringstream error_string;
+						error_string << "Unbekannte Helligkeitsstufe " << (int)bin_data[i][j][0] << ".";
+						MessageBox(NULL, error_string.str().c_str() , NULL, MB_ICONERROR);
+					}
 					return 6;
 				}
 			} else {
@@ -144,7 +186,13 @@ int main(int argc, char *argv[]) {
 				} else if(bin_data[i][j][0] == 0xC8 || bin_data[i][j][0] == 0x08) {
 					bin_data[i][j][0] = 0xC8;
 				} else {
-					cerr << "Unbekannte Helligkeitsstufe " << (int)bin_data[i][j][0] << ".";
+					if(commandline_mode) {
+						cerr << "Unbekannte Helligkeitsstufe " << (int)bin_data[i][j][0] << ".";
+					} else {
+						std::stringstream error_string;
+						error_string << "Unbekannte Helligkeitsstufe " << (int)bin_data[i][j][0] << ".";
+						MessageBox(NULL, error_string.str().c_str() , NULL, MB_ICONERROR);
+					}
 					return 7;
 				}
 			}

@@ -1,6 +1,6 @@
 Name         : BahnGigantTool, BahnGigantVisualizer
 Author       : simugamer
-Version      : 0.1
+Version      : 0.2
 Copyright    : GNU 3 Public Licence
 
 Beschreibung BahnGigantTool:
